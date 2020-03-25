@@ -111,7 +111,7 @@ func main() {
 		}
 	})
 
-	app.HandleDir("/", "./build/static")
+	app.HandleDir("/", "./build")
 
 	app.RegisterView(iris.HTML("./build", ".html"))
 
