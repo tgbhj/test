@@ -11,12 +11,12 @@ import (
 )
 
 type Info struct {
-	Company string        `bson:"company"`
-	Name    string        `bson:"name"`
-	Phone   string        `bson:"phone"`
-	Email   string        `bson:"email"`
-	Msg     string        `bson:"msg"`
-	Date    time.Time     `bson:"date"`
+	Company string    `bson:"company"`
+	Name    string    `bson:"name"`
+	Phone   string    `bson:"phone"`
+	Email   string    `bson:"email"`
+	Msg     string    `bson:"msg"`
+	Date    time.Time `bson:"date"`
 }
 
 func main() {
