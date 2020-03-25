@@ -25,7 +25,7 @@ func main() {
 	// 连接到MongoDB
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
-		log.Print("DB Connect Failed：", err)
+		log.Fatal("DB Connect Failed：", err)
 	} else {
 		log.Print("DB Connect Success\n")
 	}
@@ -33,7 +33,7 @@ func main() {
 	// 检查连接
 	err = client.Ping(context.TODO(), nil)
 	if err != nil {
-		log.Print("DB Check Failed：", err)
+		log.Fatal("DB Check Failed：", err)
 	} else {
 		log.Print("DB Check Passed\n")
 	}
@@ -46,26 +46,39 @@ func main() {
 		var results []*Info
 		cur, err := collection.Find(context.TODO(), bson.M{}, options.Find().SetSort(bson.M{"date": -1}))
 		if err != nil {
-			log.Fatal(err)
+			ctx.JSON(iris.Map{
+				"code": 50000,
+				"msg":  err,
+				"cb":   "Null",
+			})
 		}
 		for cur.Next(context.TODO()) {
 			// 创建一个值，将单个文档解码为该值
 			var elem Info
 			err := cur.Decode(&elem)
 			if err != nil {
-				log.Fatal(err)
+				ctx.JSON(iris.Map{
+					"code": 50000,
+					"msg":  err,
+					"cb":   "Null",
+				})
 			}
 			results = append(results, &elem)
 		}
 
 		if err := cur.Err(); err != nil {
-			log.Fatal(err)
+			ctx.JSON(iris.Map{
+				"code": 50000,
+				"msg":  err,
+				"cb":   "Null",
+			})
 		}
 
 		// 完成后关闭游标
 		cur.Close(context.TODO())
 		ctx.JSON(iris.Map{
 			"code": 20000,
+			"msg":  "Success",
 			"cb":   results,
 		})
 	})
@@ -75,29 +88,35 @@ func main() {
 		info.Date = time.Now()
 		err := ctx.ReadJSON(info)
 		if err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			ctx.WriteString(err.Error())
-			return
+			ctx.JSON(iris.Map{
+				"code": 50000,
+				"msg":  err,
+				"cb":   "Null",
+			})
 		}
 
 		insertResult, err := collection.InsertOne(context.TODO(), info)
 		if err != nil {
-			log.Fatal(err)
+			ctx.JSON(iris.Map{
+				"code": 50000,
+				"msg":  err,
+				"cb":   "Null",
+			})
 		} else {
 			ctx.JSON(iris.Map{
 				"code": 20000,
+				"msg":  "Success",
 				"cb":   insertResult.InsertedID,
 			})
 		}
 	})
 
-	app.HandleDir("/", "./build")
+	app.HandleDir("/", "./build/static")
 
 	app.RegisterView(iris.HTML("./build", ".html"))
 
 	app.Get("/*", func(ctx iris.Context) {
-		// 渲染模板文件： ./build/index.html
-		ctx.View("index.html")
+		ctx.View("index.html") // 渲染模板文件： ./build/index.html
 	})
 
 	iris.RegisterOnInterrupt(func() {
