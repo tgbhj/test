@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/kataras/iris/v12"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
@@ -11,12 +12,13 @@ import (
 )
 
 type Info struct {
-	Company string    `bson:"company"`
-	Name    string    `bson:"name"`
-	Phone   string    `bson:"phone"`
-	Email   string    `bson:"email"`
-	Msg     string    `bson:"msg"`
-	Date    time.Time `bson:"date"`
+	ID      primitive.ObjectID `bson:"_id"`
+	Company string             `bson:"company"`
+	Name    string             `bson:"name"`
+	Phone   string             `bson:"phone"`
+	Email   string             `bson:"email"`
+	Msg     string             `bson:"msg"`
+	Date    time.Time          `bson:"date"`
 }
 
 func main() {
@@ -111,11 +113,9 @@ func main() {
 		}
 	})
 
-	app.HandleDir("/", "./build")
+	app.RegisterView(iris.HTML("./build", ".html").Reload(true))
 
-	app.RegisterView(iris.HTML("./build", ".html"))
-
-	app.Get("/*", func(ctx iris.Context) {
+	app.Get("*", func(ctx iris.Context) {
 		ctx.View("index.html") // 渲染模板文件： ./build/index.html
 	})
 
