@@ -2,121 +2,74 @@ package main
 
 import (
 	"context"
+	"github.com/elazarl/go-bindata-assetfs"
+	"github.com/go-bindata/go-bindata"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/kataras/iris/v12"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
+	"net/http"
 	"time"
 )
 
-type Info struct {
-	ID      primitive.ObjectID `bson:"_id"`
-	Company string             `bson:"company"`
-	Name    string             `bson:"name"`
-	Phone   string             `bson:"phone"`
-	Email   string             `bson:"email"`
-	Msg     string             `bson:"msg"`
-	Date    time.Time          `bson:"date"`
+type Infos struct {
+	gorm.Model
+	Company string
+	Name    string
+	Phone   string
+	Email   string
+	Msg     string
 }
 
 func main() {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-
-	// 连接到MongoDB
-	client, err := mongo.Connect(context.TODO(), clientOptions)
-	if err != nil {
-		log.Fatal("DB Connect Failed：", err)
-	} else {
-		log.Print("DB Connect Success\n")
-	}
-
-	// 检查连接
-	err = client.Ping(context.TODO(), nil)
-	if err != nil {
-		log.Fatal("DB Check Failed：", err)
-	} else {
-		log.Print("DB Check Passed\n")
-	}
-
-	collection := client.Database("adinno").Collection("infos")
-
 	app := iris.New()
+	app.Logger().SetLevel("debug")
+
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		panic("Failed to connect database")
+	}
+	defer db.Close()
+
+	if db.HasTable(&Infos{}) {
+		db.AutoMigrate(&Infos{})
+	} else {
+		db.CreateTable(&Infos{})
+	}
+
+	//fs := assetfs.AssetFS{
+	//	Asset:     bindata.Asset,
+	//	AssetDir:  bindata.AssetDir,
+	//	AssetInfo: bindata.AssetInfo,
+	//}
+	http.Handle("/*", http.FileServer(&fs))
+
+	app.RegisterView(iris.HTML("./assets", ".html").Reload(true).Binary(Asset, AssetNames))
+
+	app.Get("/*", func(ctx iris.Context) {
+		ctx.View("assets/index.html") // 渲染模板文件： ./assets/index.html
+	})
 
 	app.Get("/info", func(ctx iris.Context) {
-		var results []*Info
-		cur, err := collection.Find(context.TODO(), bson.M{}, options.Find().SetSort(bson.M{"date": -1}))
-		if err != nil {
-			ctx.JSON(iris.Map{
-				"code": 50000,
-				"msg":  err,
-				"cb":   "Null",
-			})
-		}
-		for cur.Next(context.TODO()) {
-			// 创建一个值，将单个文档解码为该值
-			var elem Info
-			err := cur.Decode(&elem)
-			if err != nil {
-				ctx.JSON(iris.Map{
-					"code": 50000,
-					"msg":  err,
-					"cb":   "Null",
-				})
-			}
-			results = append(results, &elem)
-		}
-
-		if err := cur.Err(); err != nil {
-			ctx.JSON(iris.Map{
-				"code": 50000,
-				"msg":  err,
-				"cb":   "Null",
-			})
-		}
-
-		// 完成后关闭游标
-		cur.Close(context.TODO())
+		var infos []Infos
+		db.Order("ID desc").Find(&infos)
+		ctx.ReadJSON(&infos)
 		ctx.JSON(iris.Map{
 			"code": 20000,
 			"msg":  "Success",
-			"cb":   results,
+			"cb":   infos,
 		})
 	})
 
 	app.Post("/info", func(ctx iris.Context) {
-		info := new(Info)
-		info.Date = time.Now()
-		err := ctx.ReadJSON(info)
-		if err != nil {
-			ctx.JSON(iris.Map{
-				"code": 50000,
-				"msg":  err,
-				"cb":   "Null",
-			})
-		}
-
-		insertResult, err := collection.InsertOne(context.TODO(), info)
-		if err != nil {
-			ctx.JSON(iris.Map{
-				"code": 50000,
-				"msg":  err,
-				"cb":   "Null",
-			})
-		} else {
-			ctx.JSON(iris.Map{
-				"code": 20000,
-				"msg":  "Success",
-				"cb":   insertResult.InsertedID,
-			})
-		}
-	})
-
-	app.RegisterView(iris.HTML("./build", ".html").Reload(true))
-
-	app.Get("*", func(ctx iris.Context) {
-		ctx.View("index.html") // 渲染模板文件： ./build/index.html
+		var infos Infos
+		ctx.ReadJSON(&infos)
+		db.Create(&infos)
+		ctx.JSON(iris.Map{
+			"code": 20000,
+			"msg":  "Success",
+			"cb":   nil,
+		})
 	})
 
 	iris.RegisterOnInterrupt(func() {
