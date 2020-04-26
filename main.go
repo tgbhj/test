@@ -2,13 +2,10 @@ package main
 
 import (
 	"context"
-	"github.com/elazarl/go-bindata-assetfs"
-	"github.com/go-bindata/go-bindata"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/kataras/iris/v12"
 	"log"
-	"net/http"
 	"time"
 )
 
@@ -37,17 +34,12 @@ func main() {
 		db.CreateTable(&Infos{})
 	}
 
-	//fs := assetfs.AssetFS{
-	//	Asset:     bindata.Asset,
-	//	AssetDir:  bindata.AssetDir,
-	//	AssetInfo: bindata.AssetInfo,
-	//}
-	http.Handle("/*", http.FileServer(&fs))
-
-	app.RegisterView(iris.HTML("./assets", ".html").Reload(true).Binary(Asset, AssetNames))
-
-	app.Get("/*", func(ctx iris.Context) {
-		ctx.View("assets/index.html") // 渲染模板文件： ./assets/index.html
+	app.HandleDir("/", "./build", iris.DirOptions{
+		IndexName:  "/index.html",
+		Gzip:       false,
+		ShowList:   false,
+		Asset:      Asset,
+		AssetNames: AssetNames,
 	})
 
 	app.Get("/info", func(ctx iris.Context) {
@@ -68,7 +60,7 @@ func main() {
 		ctx.JSON(iris.Map{
 			"code": 20000,
 			"msg":  "Success",
-			"cb":   nil,
+			"cb":   infos,
 		})
 	})
 
@@ -77,8 +69,8 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		log.Print("\nServer Closing\n")
-		app.Shutdown(ctx) // 关闭所有主机
+		app.Shutdown(ctx)
 	})
 
-	app.Listen(":9000", iris.WithoutInterruptHandler)
+	app.Run(iris.Addr(":9000"), iris.WithoutInterruptHandler)
 }

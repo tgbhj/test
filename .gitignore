@@ -2,3 +2,5 @@
 main
 .idea
 test.db
+test
+build.go
