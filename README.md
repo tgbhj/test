@@ -1,1 +1,2 @@
-# go build main.go
+### go-bindata
+### go build
