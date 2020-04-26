@@ -25,6 +25,8 @@ func main() {
 	db, err := gorm.Open("sqlite3", "test.db")
 	if err != nil {
 		panic("Failed to connect database")
+	} else {
+		log.Print("Connect database Success")
 	}
 	defer db.Close()
 
